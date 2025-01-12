@@ -1,4 +1,3 @@
-import asyncio
 import sys
 import shutil
 from asyncio import StreamReader
@@ -53,3 +52,5 @@ async def read_line(stdin_reade: StreamReader):
             buffer.append(char)
             sys.stdout.write(char.decode())
             sys.stdout.flush()
+
+    return b"".join(buffer).decode()
