@@ -1,12 +1,12 @@
 import asyncio
 import logging
 from asyncio import wait_for
-from asyncio import StreamReader 
+from asyncio import StreamReader
 from asyncio import StreamWriter
 
 
-class CharServer:
-    
+class ChatServer:
+
     def __init__(self):
         self._connected_clients = {}
 
@@ -22,26 +22,27 @@ class CharServer:
         data = await reader.readline()
         command, name = data.split(b":")
         if command == b"NAME":
+            name = name.strip(b"\n")
             await self._add_user(name.decode(), writer, reader)
             await self._on_connect(name.decode(), writer)
         else:
             logging.error("Неизвестная комманда от клиента, разрыв соединения")
             writer.close()
             await writer.wait_closed()
-    
+
     async def _add_user(self, name: str,
                         writer: StreamWriter,
                         reader: StreamReader):
         self._connected_clients[name] = writer
         asyncio.create_task(self._message_handling(name, reader))
-    
+
     async def _message_handling(self,
                                 name: str,
                                 reader: StreamReader):
         try:
             while (message := await wait_for(reader.readline(), 120)) != b"":
-                await self._notify_all(f"{name.strip()}: {message.decode()}")
-            await self._delete_user(name)
+                await self._notify_all(f"{name}: {message.decode()}")
+            await self._notify_all(f"Пользователь {name} вышел\n")
         except Exception as e:
             logging.exception("Ошибка при чтении данных от клиента",
                               exc_info=e)
@@ -53,8 +54,8 @@ class CharServer:
                      f"{number_connected_clients}\n".encode())
         await writer.drain()
         await self._notify_all(f"Подключился новый "
-                               f"пользователь {name}")
-    
+                               f"пользователь {name}\n")
+
     async def _notify_all(self, message: str):
         inactive_users = []
         for name in self._connected_clients:
@@ -67,7 +68,7 @@ class CharServer:
                                   exc_info=e)
                 inactive_users.append(name)
         [await self._delete_user(name) for name in inactive_users]
-    
+
     async def _delete_user(self, name: str):
         writer = self._connected_clients[name]
         self._connected_clients.pop(name)
@@ -75,14 +76,14 @@ class CharServer:
             writer.close()
             await writer.wait_closed()
         except Exception as e:
-            logging.exception("Ошибка при закрытии клиентского StreamWriter",
+            logging.exception("Ошибка при закрытии клиентского writer",
                               exc_info=e)
 
 
 async def main():
     port = 8000
     host = "127.0.0.1"
-    chat_server = CharServer()
+    chat_server = ChatServer()
     await chat_server.start(host, port)
 
 asyncio.run(main())

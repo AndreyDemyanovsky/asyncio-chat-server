@@ -10,7 +10,7 @@ def delete_line():
 
 
 def clean_line():
-    sys.stdout.write("\033[2kG0")
+    sys.stdout.write("\033[2K\033[0G")
 
 
 def move_back_one_char():
@@ -40,17 +40,19 @@ async def read_line(stdin_reade: StreamReader):
     DELETE_SIGN = b"\x7f"
     buffer: Deque = deque()
 
-    while (char := await stdin_reade.read(1)) != b"":
+    while (char := await stdin_reade.read(1)) != b"\n":
 
         if char == DELETE_SIGN:
             if len(buffer) > 0:
                 move_back_one_char()
                 sys.stdout.write(" ")
                 move_back_one_char()
+                sys.stdout.flush()
                 buffer.pop()
+
         else:
             buffer.append(char)
             sys.stdout.write(char.decode())
             sys.stdout.flush()
-
+    clean_line()
     return b"".join(buffer).decode()
